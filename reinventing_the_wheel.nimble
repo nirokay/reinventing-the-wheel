@@ -7,8 +7,8 @@ license       = "GPL-3.0-only"
 srcDir        = "src"
 binDir        = "bin"
 bin           = @[
-    "exec/cat"
-]
+                    "echo"
+                ]
 
 
 # Dependencies
