@@ -3,7 +3,7 @@ import lib/all
 
 const
     PROGRAM = "echo"
-    DESCRIPTION = "Echoes provided arguments to stdout."
+    DESCRIPTION = "Writes to stdout."
     VERSION = "1.0.0"
 
 let cmd: CommandLine = parseCommandLine()

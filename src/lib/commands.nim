@@ -32,26 +32,29 @@ template addHelpCommand*(list: untyped): untyped =
         names: @["help", "h"],
         desc: "Displays this help text.",
         exec: proc(_: string) =
-            echo "Options:"
-            var lines: seq[string]
-            for cmd in list[]:
-                var line: seq[string]
-                var l: seq[string]
-                for name in cmd.names:
-                    if name.len() == 1: l.add "-" & name
-                    else: l.add "--" & name
-                line.add "  " & l.join(", ")
-                if cmd.accepts.isSome():
-                    let
-                        accepts = get cmd.accepts
-                        action: string = if accepts.default != "": "Accepts" else: "Requires"
-                    line.add "    " & action & " [" & accepts.argType & "]" & (
-                        if accepts.default != "": " default: '" & accepts.default & "'"
-                        else: ""
-                    )
-                line.add "    " & cmd.desc
-                lines.add line.join("\n")
-            echo lines.join("\n\n")
+            echo PROGRAM & " - " & DESCRIPTION
+
+            if list[].len() != 0:
+                echo "\nOptions:"
+                var lines: seq[string]
+                for cmd in list[]:
+                    var line: seq[string]
+                    var l: seq[string]
+                    for name in cmd.names:
+                        if name.len() == 1: l.add "-" & name
+                        else: l.add "--" & name
+                    line.add "  " & l.join(", ")
+                    if cmd.accepts.isSome():
+                        let
+                            accepts = get cmd.accepts
+                            action: string = if accepts.default != "": "Accepts" else: "Requires"
+                        line.add "    " & action & " [" & accepts.argType & "]" & (
+                            if accepts.default != "": " default: '" & accepts.default & "'"
+                            else: ""
+                        )
+                    line.add "    " & cmd.desc
+                    lines.add line.join("\n")
+                echo lines.join("\n\n")
             quit 0
     ), 0)
 template insertDefaultCommands*(list: untyped): untyped =

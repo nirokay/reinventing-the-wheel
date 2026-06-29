@@ -4,6 +4,7 @@
 !*.*
 *.exe
 *.out
+!LICENSE
 
 # Testing:
 test.nim
