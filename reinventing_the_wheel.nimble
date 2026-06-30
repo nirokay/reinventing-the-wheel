@@ -8,7 +8,8 @@ srcDir        = "src"
 binDir        = "bin"
 bin           = @[
                     "debug",
-                    "echo"
+                    "echo",
+                    "cat"
                 ]
 
 

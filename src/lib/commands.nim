@@ -1,4 +1,4 @@
-import std/[options]
+import std/[strutils, options]
 export options
 
 type
@@ -32,7 +32,7 @@ template addHelpCommand*(list: untyped): untyped =
         names: @["help", "h"],
         desc: "Displays this help text.",
         exec: proc(_: string) =
-            echo PROGRAM & " - " & DESCRIPTION
+            echo @[PROGRAM, DESCRIPTION].join(" - ")
 
             if list[].len() != 0:
                 echo "\nOptions:"
