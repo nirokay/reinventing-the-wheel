@@ -7,7 +7,6 @@ license       = "GPL-3.0-only"
 srcDir        = "src"
 binDir        = "bin"
 bin           = @[
-                    "debug",
                     "echo",
                     "cat",
                     "base64"
