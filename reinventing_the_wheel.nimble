@@ -9,7 +9,8 @@ binDir        = "bin"
 bin           = @[
                     "echo",
                     "cat",
-                    "base64"
+                    "base64",
+                    "ls"
                 ]
 
 
