@@ -40,7 +40,7 @@ list[] = @[
         some CommandArgument(
             name: "number",
             argType: $int,
-            default: $indentNumber
+            default: some $indentNumber
     ))
 ]
 list.insertDefaultCommands()

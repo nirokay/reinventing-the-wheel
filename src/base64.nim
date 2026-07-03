@@ -18,10 +18,18 @@ var
 var list: ref seq[Command] = new seq[Command]
 list[] = @[
     newCommand(@["payload", "p", "text", "t"], "Payload/Text to encode/decode, instead of file.",
-        proc(text: string) = payload = text
+        proc(text: string) = payload = text,
+        some CommandArgument(
+            name: "text",
+            argType: $string
+        )
     ),
     newCommand(@["file", "f"], "Encode/Decode file contents.",
-        proc(name: string) = file = name
+        proc(name: string) = file = name,
+        some CommandArgument(
+            name: "file-name",
+            argType: $string
+        )
     ),
     newCommand(@["encode", "e"], "Encode plain text to base64.",
         proc(_: string) =

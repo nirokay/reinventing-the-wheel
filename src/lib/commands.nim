@@ -3,9 +3,8 @@ export options
 
 type
     CommandArgument* = object
-        name*: string
-        argType*: string
-        default*: string
+        name*, argType*: string
+        default*: Option[string]
     Command* = object
         names*: seq[string]
         desc*: string
@@ -45,6 +44,13 @@ template addHelpCommand*(list: untyped): untyped =
                         else: l.add "--" & name
                     line.add "  " & l.join(", ")
                     if cmd.accepts.isSome():
+                        let accepts = get cmd.accepts
+                        line[^1] &= " = <" & accepts.name & ": " & accepts.argType & ">" & (
+                            if accepts.default.isSome():
+                                " | " & accepts.default.get("?")
+                            else: ""
+                        )
+                        #[
                         let
                             accepts = get cmd.accepts
                             action: string = if accepts.default != "": "Accepts" else: "Requires"
@@ -52,6 +58,7 @@ template addHelpCommand*(list: untyped): untyped =
                             if accepts.default != "": " default: '" & accepts.default & "'"
                             else: ""
                         )
+                        ]#
                     line.add "    " & cmd.desc
                     lines.add line.join("\n")
                 echo lines.join("\n\n")

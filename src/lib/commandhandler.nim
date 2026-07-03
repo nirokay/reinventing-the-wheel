@@ -10,5 +10,6 @@ proc execAllCommands*(list: ref seq[Command]) =
             if flag notin command.names: continue
             if command.accepts.isSome():
                 let accepts: CommandArgument = get command.accepts
-                if accepts.default == "" and value == "": panicUserError("Flag '" & flag & "' cannot be empty, expected some type of '" & accepts.argType & "'.")
+                if accepts.default.isSome():
+                    if accepts.default.get() != "" and value == "": panicUserError("Flag '" & flag & "' cannot be empty, expected some type of '" & accepts.argType & "'.")
             command.exec(value)

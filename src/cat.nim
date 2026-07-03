@@ -39,7 +39,7 @@ list[] = @[
         some CommandArgument(
             name: "number",
             argType: $int,
-            default: $headTailLines
+            default: some $headTailLines
         )
     )
 ]
