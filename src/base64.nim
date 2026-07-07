@@ -1,4 +1,4 @@
-import std/[terminal, base64]
+import std/[base64]
 import lib/all
 
 const

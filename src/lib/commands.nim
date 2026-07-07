@@ -18,6 +18,11 @@ proc newCommand*(names: seq[string], desc: string, exec: proc, accepts: Option[C
     accepts: accepts
 )
 
+proc getCommandFlagRepr*(name: string): string =
+    result =
+        if name.len() == 1: "-" & name
+        else: "--" & name
+
 template addVersionCommand*(list: untyped): untyped =
     list[].insert(Command(
         names: @["version", "v"],
@@ -37,11 +42,11 @@ template addHelpCommand*(list: untyped): untyped =
                 echo "\nOptions:"
                 var lines: seq[string]
                 for cmd in list[]:
-                    var line: seq[string]
-                    var l: seq[string]
+                    var
+                        line: seq[string]
+                        l: seq[string]
                     for name in cmd.names:
-                        if name.len() == 1: l.add "-" & name
-                        else: l.add "--" & name
+                        l.add name.getCommandFlagRepr()
                     line.add "  " & l.join(", ")
                     if cmd.accepts.isSome():
                         let accepts = get cmd.accepts
@@ -50,15 +55,6 @@ template addHelpCommand*(list: untyped): untyped =
                                 " | " & accepts.default.get("?")
                             else: ""
                         )
-                        #[
-                        let
-                            accepts = get cmd.accepts
-                            action: string = if accepts.default != "": "Accepts" else: "Requires"
-                        line.add "    " & action & " [" & accepts.argType & "]" & (
-                            if accepts.default != "": " default: '" & accepts.default & "'"
-                            else: ""
-                        )
-                        ]#
                     line.add "    " & cmd.desc
                     lines.add line.join("\n")
                 echo lines.join("\n\n")

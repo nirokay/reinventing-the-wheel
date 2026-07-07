@@ -1,5 +1,6 @@
 import ./[
     commandhandler,
+    #completions, # borked
     commands,
     errors,
     flags
@@ -7,5 +8,6 @@ import ./[
 export
     commandhandler,
     commands,
+    #completions,
     errors,
     flags
