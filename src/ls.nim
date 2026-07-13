@@ -1,4 +1,4 @@
-import std/[strutils, os, algorithm, options]
+import std/[strutils, strformat, os, algorithm, options]
 import lib/all
 
 const
@@ -11,14 +11,20 @@ let cmd: CommandLine = parseCommandLine()
 type
     FsItem = object
         kind*: PathComponent
-        path*: string
+        fullPath*, path*: string
         info*: Option[FileInfo]
     Sorting = enum
         byDefault, byAlphabet, bySize
 
+const
+    shortingMinLength: int = 5
+    shortingSuffix: string = "..."
+
 var
     listHiddenFiles: bool = false
     longListing: bool = false
+    printFileUrls: bool = false
+    printAbsolutePath: bool = false
     columns: int = 4
     shorting: int = 0
     sortBy: Sorting = byDefault
@@ -33,6 +39,12 @@ list[] = @[
     newCommand(@["long", "l"], "Long listing.",
         proc(_: string) = longListing = true
     ),
+    newCommand(@["file-urls", "u"], "Prints clickable file urls.",
+        proc(_: string) = printFileUrls = true
+    ),
+    newCommand(@["full-path", "f"], "Prints absolute file path.",
+        proc(_: string) = printAbsolutePath = true
+    ),
     newCommand(@["columns", "c"], "Specify amount of columns.",
         proc(number: string) =
             try:
@@ -46,13 +58,13 @@ list[] = @[
             default: some $columns
         )
     ),
-    newCommand(@["shorting", "s"], "Shorten file/directory names when exceeding specified length.",
+    newCommand(@["shorting", "s"], &"Shorten file/directory names when exceeding specified length. Exceeded length will have '{shortingSuffix}' appended.",
         proc(number: string) =
             try:
                 shorting = number.parseInt()
-                if shorting < 1: panicUserError("Shorting value has to be a positive integer.")
+                if shorting < shortingMinLength: panicUserError(&"Shorting value has to be a positive integer >= {shortingMinLength}.")
             except ValueError:
-                panicUserError("Shorting value has to be a positive integer."),
+                panicUserError(&"Shorting value has to be a positive integer >= {shortingMinLength}."),
         some CommandArgument(
             name: "number",
             argType: $int,
@@ -79,11 +91,45 @@ list[] = @[
 list.insertDefaultCommands()
 list.execAllCommands()
 
+if longListing or printFileUrls: columns = 1
+
 let workingDir: string = getCurrentDir()
 var validDirs: seq[string]
 
 for dir in cmd.arguments:
     if dirExists(dir): validDirs.add dir.replace("~", getHomeDir())
+
+proc getFileDisplay(file: FsItem): string =
+    result =
+        if printFileUrls: "file://" & file.fullPath
+        elif printAbsolutePath: file.fullPath
+        else: file.path
+
+    # Replace characters:
+    for repl in @[
+        ("'", "\\'"),
+        ("\"", "\\\"")
+    ]:
+        result = result.replace(repl[0], repl[1])
+
+    # Short names:
+    block shortenNames:
+        if shorting < shortingMinLength: break shortenNames
+        if shorting >= result.len(): break shortenNames
+        let
+            cutoff: int = shorting - shortingSuffix.len() - 1
+            shortened: string = block:
+                var r: string = result[0 .. cutoff]
+                # Remove trailing backslash, could fuck with piping:
+                while r[^1] == '\\':
+                    r = r[0 .. ^2]
+                r
+        if shortened != result: result = shortened & shortingSuffix
+
+    # Quote when spaces:
+    if " " in result:
+        result = "'" & result & "'"
+
 
 proc getSorted(entries: seq[FsItem]): seq[FsItem] =
     proc a(x, y: FsItem): int =
@@ -116,6 +162,7 @@ proc listDirectory(dir: string, multiple: bool = false) =
         var item = FsItem(
             kind: kind,
             path: path.splitPath().tail,
+            fullPath: p.absolutePath()
         )
         try:
             item.info = some path.getFileInfo()
@@ -126,7 +173,7 @@ proc listDirectory(dir: string, multiple: bool = false) =
     if sortBy != byDefault: entries = entries.getSorted()
 
     for entry in entries:
-        echo entry.path
+        echo entry.getFileDisplay()
     echo lines.join("\n")
 
 if validDirs.len() == 0: listDirectory(".")
