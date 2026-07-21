@@ -1,4 +1,4 @@
-import std/[strutils, strformat, os, algorithm, options]
+import std/[strutils, strformat, os, algorithm, options, terminal, math]
 import lib/all
 
 const
@@ -19,13 +19,13 @@ type
 const
     shortingMinLength: int = 5
     shortingSuffix: string = "..."
-
+    columnSep: string = "  "
 var
     listHiddenFiles: bool = false
     longListing: bool = false
     printFileUrls: bool = false
     printAbsolutePath: bool = false
-    columns: int = 4
+    columns: int = 0
     shorting: int = 0
     sortBy: Sorting = byDefault
     ignoreCase: bool = false
@@ -91,7 +91,9 @@ list[] = @[
 list.insertDefaultCommands()
 list.execAllCommands()
 
-if longListing or printFileUrls: columns = 1
+if longListing or printFileUrls:
+    columns = 1
+    shorting = 0
 
 let workingDir: string = getCurrentDir()
 var validDirs: seq[string]
@@ -130,6 +132,97 @@ proc getFileDisplay(file: FsItem): string =
     if " " in result:
         result = "'" & result & "'"
 
+proc putInColumnsOf(items: seq[FsItem], cols: int): (seq[int], seq[FsItem]) =
+    result =(
+        newSeq[int](cols),
+        newSeq[FsItem](items.len())
+    )
+    for id, item in items:
+        try:
+            let
+                length: int = item.getFileDisplay().len()
+                pos = divmod(id, cols)
+                row: int = pos[0]
+                col: int = pos[1]
+            #[ fuck this shit, idk how to put it in columns vertically
+                position: int = col * cols + row
+                # position = row * cols + col
+                newCol: int = position mod cols
+            # echo &"{id} in {cols}: {col} * {cols} + {row} = {position}"
+            # echo &"{id}: {row} * {cols} + {col} = {position}"
+            ]#
+            result[1][id] = item
+            if length > result[0][col]: result[0][col] = length
+            # echo item.getFileDisplay(), " ", length, " [", col, ", ", row, "]"
+        except IndexDefect:
+            echo "fuck"
+proc putInMinimumCols(items: seq[FsItem]): (seq[int], seq[FsItem]) =
+    var
+        cols: int = 8
+        finalColLengths: seq[int] = newSeq[int](cols)
+        finalColumnedItems: seq[FsItem] = items
+
+    while cols > 1:
+        let
+            #rows: int = int ceil(items.len().toFloat() / cols.toFloat())
+            data: (seq[int], seq[FsItem]) = items.putInColumnsOf(cols)
+            colLengths: seq[int] = data[0]
+            columnedItems: seq[FsItem] = data[1]
+            sepLen: int = max(0, columnSep.len() * (cols - 1))
+
+        if colLengths.sum() + sepLen > terminalWidth():
+            dec cols
+        else:
+            finalColLengths = colLengths
+            finalColumnedItems = columnedItems
+            break
+
+    result = (finalColLengths, finalColumnedItems)
+
+proc getLongListingDetails(item: FsItem): seq[string] =
+    if not longListing: return @[]
+    # TODO
+
+proc printEntry(item: FsItem, colLength: int, details: seq[string]) =
+    let
+        file: string = item.getFileDisplay()
+        color: ForegroundColor = block:
+            if item.info.isNone():
+                fgRed
+            else:
+                case item.info.get().kind:
+                    of pcFile: fgDefault
+                    of pcLinkToFile, pcLinkToDir: fgCyan
+                    of pcDir: fgBlue
+        style: Style = block:
+            var r: Style = styleDim
+            if item.info.isSome():
+                let info: FileInfo = item.info.get()
+                if info.kind in [pcDir, pcLinkToDir]: r = styleBright
+            r
+
+    if details.len() != 0: stdout.write details.join(" ")
+    stdout.styledWrite style, color, file, fgDefault
+    stdout.write repeat(" ", max(0, colLength - file.len()))
+proc printEntries(entries: seq[FsItem]) =
+    let
+        data = if columns == 0: entries.putInMinimumCols() else: entries.putInColumnsOf(columns)
+        colLengths: seq[int] = data[0]
+        cols: int = colLengths.len()
+        items: seq[FsItem] = data[1]
+
+    var details: seq[seq[string]]
+    if longListing:
+        for item in items: details.add item.getLongListingDetails()
+
+    for id, item in items:
+        let
+            col: int = id mod cols
+            lastInRow: bool = col + 1 == cols
+        item.printEntry(if longListing: 0 else: colLengths[col], if details.len() == 0: @[] else: details[id])
+        if lastInRow: stdout.write "\n"
+        elif id != items.len() - 1: stdout.write "  "
+    stdout.write "\n"
 
 proc getSorted(entries: seq[FsItem]): seq[FsItem] =
     proc a(x, y: FsItem): int =
@@ -165,16 +258,15 @@ proc listDirectory(dir: string, multiple: bool = false) =
             fullPath: p.absolutePath()
         )
         try:
-            item.info = some path.getFileInfo()
+            item.info = some p.getFileInfo()
         except OSError:
             discard
         entries.add item
 
     if sortBy != byDefault: entries = entries.getSorted()
 
-    for entry in entries:
-        echo entry.getFileDisplay()
     echo lines.join("\n")
+    entries.printEntries()
 
 if validDirs.len() == 0: listDirectory(".")
 else:
