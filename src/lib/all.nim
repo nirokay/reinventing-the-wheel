@@ -3,11 +3,13 @@ import ./[
     #completions, # borked
     commands,
     errors,
-    flags
+    flags,
+    sizes
 ]
 export
     commandhandler,
     commands,
     #completions,
     errors,
-    flags
+    flags,
+    sizes

@@ -1,4 +1,4 @@
-import std/[strutils, strformat, os, algorithm, options, terminal, math]
+import std/[strutils, strformat, os, algorithm, options, terminal, math, times]
 import lib/all
 
 const
@@ -18,6 +18,7 @@ type
 
 const
     shortingMinLength: int = 5
+    longListingItems: int = 7
     shortingSuffix: string = "..."
     columnSep: string = "  "
 var
@@ -26,6 +27,8 @@ var
     printFileUrls: bool = false
     printAbsolutePath: bool = false
     columns: int = 0
+    humanReadableSizes: bool = false
+    humanSizesKilo: bool = false
     shorting: int = 0
     sortBy: Sorting = byDefault
     ignoreCase: bool = false
@@ -70,6 +73,12 @@ list[] = @[
             argType: $int,
             default: some $shorting
         )
+    ),
+    newCommand(@["human-readable", "r"], "Display file sizes in human readable format.",
+        proc(_: string) = humanReadableSizes = true
+    ),
+    newCommand(@["use-1000", "k"], "Human readable format in 1000 (kilobyte) instead of 1024 (kibibyte).",
+        proc(_: string) = humanSizesKilo = true
     ),
     newCommand(@["alphabetical", "A"], "Sort output alphabetically.",
         proc(_: string) =
@@ -180,8 +189,90 @@ proc putInMinimumCols(items: seq[FsItem]): (seq[int], seq[FsItem]) =
     result = (finalColLengths, finalColumnedItems)
 
 proc getLongListingDetails(item: FsItem): seq[string] =
-    if not longListing: return @[]
-    # TODO
+    result = newSeq[string](longListingItems)
+    if not longListing: return
+    if item.info.isNone(): return
+
+    let info: FileInfo = get item.info
+    # Type:
+    result[0] = (
+        case info.kind:
+            of pcLinkToFile, pcLinkToDir: "l"
+            of pcFile: "f"
+            of pcDir: "d"
+    )
+    if info.isSpecial: result[0] &= "*"
+
+    # Hardlinks:
+    result[1] = $info.linkCount
+
+    # Size:
+    result[2] = getFileSizeDisplay(info.size,
+        if not humanReadableSizes: uRaw
+        else:
+            if humanSizesKilo: u1000
+            else: u1024
+    )
+
+    # Permissions:
+    let permissions: set[FilePermission] = (
+        var r: set[FilePermission] = {}
+        try:
+            r = item.fullPath.getFilePermissions()
+        except CatchableError:
+            discard
+        r
+    )
+
+    for i, perms in [
+        [fpUserExec, fpUserWrite, fpUserRead],
+        [fpGroupExec, fpGroupWrite, fpGroupRead],
+        [fpOthersExec, fpOthersWrite, fpOthersRead]
+    ]:
+        result[3] &= (
+            case i:
+                of 0: "U"
+                of 1: "|G"
+                of 2: "|O"
+        )
+        for i, perm in perms:
+            result[3] &= (
+                if perm in permissions:
+                    case i:
+                        of 0: "x"
+                        of 1: "w"
+                        of 2: "r"
+                else: "-"
+            )
+
+    # Date:
+    let
+        dt: DateTime = parse(replace($info.lastWriteTime, "T", "-"), "yyyy-MM-dd-HH:mm:sszzz") # 2026-07-19T10:45:41+02:00
+        now: DateTime = now()
+    result[4] = dt.format("MMMM")[0 .. 2]
+    result[5] = dt.format("dd")
+    let year: string = dt.format("yyyy")
+    # Replace year with timestamp, if file write this year:
+    if year == now.format("yyyy"):
+        result[6] = dt.format("HH:mm")
+    else:
+        result[6] = year
+
+proc prettyLongListingDetails(entries: seq[seq[string]]): seq[seq[string]] =
+    var lengths: seq[int] = newSeq[int](longListingItems)
+    for entry in entries:
+        var r: seq[string] = entry
+        for i in 0 .. longListingItems - 1:
+            if r.len() < i: r.add @[]
+            if r[i] == "": r[i] = "/"
+            if r[i].len() > lengths[i]: lengths[i] = r[i].len()
+        result.add r
+    for i, entry in result:
+        var r: seq[string] = entry
+        for v, value in r:
+            r[v] = align(value, lengths[v])
+        result[i] = r
+
 
 proc printEntry(item: FsItem, colLength: int, details: seq[string]) =
     let
@@ -201,7 +292,7 @@ proc printEntry(item: FsItem, colLength: int, details: seq[string]) =
                 if info.kind in [pcDir, pcLinkToDir]: r = styleBright
             r
 
-    if details.len() != 0: stdout.write details.join(" ")
+    if details.len() != 0: stdout.write details.join(" ") & " "
     stdout.styledWrite style, color, file, fgDefault
     stdout.write repeat(" ", max(0, colLength - file.len()))
 proc printEntries(entries: seq[FsItem]) =
@@ -214,6 +305,9 @@ proc printEntries(entries: seq[FsItem]) =
     var details: seq[seq[string]]
     if longListing:
         for item in items: details.add item.getLongListingDetails()
+
+    if details.len() != 0:
+        details = details.prettyLongListingDetails()
 
     for id, item in items:
         let
