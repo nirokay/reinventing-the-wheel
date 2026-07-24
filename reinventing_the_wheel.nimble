@@ -13,6 +13,8 @@ bin           = @[
                     "ls"
                 ]
 
+task release, "Build release versions.":
+    exec "nimble build -d:release -d:danger"
 
 # Dependencies
 

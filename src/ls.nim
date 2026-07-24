@@ -14,7 +14,9 @@ type
         fullPath*, path*: string
         info*: Option[FileInfo]
     Sorting = enum
-        byDefault, byAlphabet, bySize
+        byDefault, byAlphabet, bySize, byDate
+    WhichTime = enum
+        lastWrite, lastAccess, firstCreation
 
 const
     shortingMinLength: int = 5
@@ -27,6 +29,7 @@ var
     printFileUrls: bool = false
     printAbsolutePath: bool = false
     columns: int = 0
+    longListingTime: WhichTime = lastWrite
     humanReadableSizes: bool = false
     humanSizesKilo: bool = false
     shorting: int = 0
@@ -74,15 +77,21 @@ list[] = @[
             default: some $shorting
         )
     ),
+    newCommand(@["time-creation", "C"], "Display creation time instead of last write time in long listing.",
+        proc(_: string) = longListingTime = firstCreation
+    ),
+    newCommand(@["time-last-access", "E"], "Display creation time instead of last write time in long listing.",
+        proc(_: string) = longListingTime = lastAccess
+    ),
     newCommand(@["human-readable", "r"], "Display file sizes in human readable format.",
         proc(_: string) = humanReadableSizes = true
     ),
-    newCommand(@["use-1000", "k"], "Human readable format in 1000 (kilobyte) instead of 1024 (kibibyte).",
+    newCommand(@["use-1000", "k"], "Human readable format in 1000s steps (eg. kilobyte) instead of 1024s (eg. kibibyte).",
         proc(_: string) = humanSizesKilo = true
     ),
     newCommand(@["alphabetical", "A"], "Sort output alphabetically.",
         proc(_: string) =
-            if sortBy != byDefault: panicUserError("Sorting can only be done by either alphabet or size.")
+            if sortBy != byDefault: panicUserError("Sorting can only be done by either alphabet, size or date.")
             sortBy = byAlphabet
     ),
     newCommand(@["ignore-case", "I"], "Ignore case for alphabetical sort.",
@@ -90,8 +99,13 @@ list[] = @[
     ),
     newCommand(@["size", "S"], "Sort output by size.",
         proc(_: string) =
-            if sortBy != byDefault: panicUserError("Sorting can only be done by either alphabet or size.")
+            if sortBy != byDefault: panicUserError("Sorting can only be done by either alphabet, size or date.")
             sortBy = bySize
+    ),
+    newCommand(@["date", "D"], "Sort output by date.",
+        proc(_: string) =
+            if sortBy != byDefault: panicUserError("Sorting can only be done by either alphabet, size or date.")
+            sortBy = byDate
     ),
     newCommand(@["reverse", "R"], "Reverse sorting.",
         proc(_: string) = sortingReversed = true
@@ -104,11 +118,12 @@ if longListing or printFileUrls:
     columns = 1
     shorting = 0
 
-let workingDir: string = getCurrentDir()
+let requestedDirs: seq[string] = cmd.arguments
 var validDirs: seq[string]
-
-for dir in cmd.arguments:
-    if dirExists(dir): validDirs.add dir.replace("~", getHomeDir())
+for dir in requestedDirs:
+    let directory: string = dir.replace("~", getHomeDir())
+    if dirExists(dir): validDirs.add directory
+    else: warningError("Cannot find directory with name '" & directory & "'.")
 
 proc getFileDisplay(file: FsItem): string =
     result =
@@ -195,13 +210,13 @@ proc getLongListingDetails(item: FsItem): seq[string] =
 
     let info: FileInfo = get item.info
     # Type:
-    result[0] = (
+    if info.isSpecial: result[0] = "*"
+    result[0] &= (
         case info.kind:
             of pcLinkToFile, pcLinkToDir: "l"
             of pcFile: "f"
             of pcDir: "d"
     )
-    if info.isSpecial: result[0] &= "*"
 
     # Hardlinks:
     result[1] = $info.linkCount
@@ -247,7 +262,12 @@ proc getLongListingDetails(item: FsItem): seq[string] =
 
     # Date:
     let
-        dt: DateTime = parse(replace($info.lastWriteTime, "T", "-"), "yyyy-MM-dd-HH:mm:sszzz") # 2026-07-19T10:45:41+02:00
+        t: Time = case longListingTime:
+            of lastWrite: info.lastWriteTime
+            of lastAccess: info.lastAccessTime
+            of firstCreation: info.creationTime
+            # lastWrite, lastAccess, firstCreation
+        dt: DateTime = parse(replace($t, "T", "-"), "yyyy-MM-dd-HH:mm:sszzz") # 2026-07-19T10:45:41+02:00
         now: DateTime = now()
     result[4] = dt.format("MMMM")[0 .. 2]
     result[5] = dt.format("dd")
@@ -324,19 +344,42 @@ proc getSorted(entries: seq[FsItem]): seq[FsItem] =
             xp: string = if ignoreCase: x.path.toLower() else: x.path
             yp: string = if ignoreCase: y.path.toLower() else: y.path
         if not sortingReversed: cmp(xp, yp)
-        else: cmp(y.path, x.path)
+        else: cmp(yp, xp)
     proc s(x, y: FsItem): int =
         let
             xs: int = x.info.get(FileInfo(size: -1)).size
             ys: int = y.info.get(FileInfo(size: -1)).size
         if not sortingReversed: cmp(ys, xs)
-        else: cmp(ys, xs)
+        else: cmp(xs, ys)
+    proc d(x, y: FsItem): int =
+        proc chooseTime(info: FileInfo): Time =
+            case longListingTime:
+                of lastWrite: info.lastWriteTime
+                of lastAccess: info.lastAccessTime
+                of firstCreation: info.creationTime
+        let
+            now: Time = getTime()
+            ix: FileInfo = x.info.get(FileInfo(
+                lastAccessTime: now,
+                lastWriteTime: now,
+                creationTime: now
+            ))
+            iy: FileInfo = y.info.get(FileInfo(
+                lastAccessTime: now,
+                lastWriteTime: now,
+                creationTime: now
+            ))
+            xd: Time = ix.chooseTime()
+            yd: Time = iy.chooseTime()
+        if not sortingReversed: cmp(yd, xd)
+        else: cmp(xd, yd)
 
     result = entries
     case sortBy:
     of byDefault: discard
     of byAlphabet: result.sort(a)
     of bySize: result.sort(s)
+    of byDate: result.sort(d)
 proc listDirectory(dir: string, multiple: bool = false) =
     var
         lines: seq[string]
@@ -362,7 +405,7 @@ proc listDirectory(dir: string, multiple: bool = false) =
     echo lines.join("\n")
     entries.printEntries()
 
-if validDirs.len() == 0: listDirectory(".")
+if requestedDirs.len() == 0: listDirectory(".")
 else:
     for i, dir in validDirs:
         listDirectory(dir, validDirs.len() > 1)
