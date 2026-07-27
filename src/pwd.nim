@@ -1,4 +1,4 @@
-import std/[os]
+from std/os import getCurrentDir
 import lib/all
 
 const
@@ -18,5 +18,8 @@ list[] = @[
 list.insertDefaultCommands()
 list.execAllCommands()
 
-let workingDir: string = (if printFileUrls: "file://" else: "") & getCurrentDir()
-echo workingDir
+try:
+    let workingDir: string = (if printFileUrls: "file://" else: "") & getCurrentDir()
+    echo workingDir
+except OSError:
+    panicProgramError("A fatal error occurred.")
