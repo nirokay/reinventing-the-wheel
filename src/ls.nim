@@ -182,7 +182,7 @@ proc putInColumnsOf(items: seq[FsItem], cols: int): (seq[int], seq[FsItem]) =
             echo "fuck"
 proc putInMinimumCols(items: seq[FsItem]): (seq[int], seq[FsItem]) =
     var
-        cols: int = 8
+        cols: int = 16
         finalColLengths: seq[int] = newSeq[int](cols)
         finalColumnedItems: seq[FsItem] = items
 
