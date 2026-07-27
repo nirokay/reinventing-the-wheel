@@ -80,7 +80,7 @@ list[] = @[
     newCommand(@["time-creation", "C"], "Display creation time instead of last write time in long listing.",
         proc(_: string) = longListingTime = firstCreation
     ),
-    newCommand(@["time-last-access", "E"], "Display creation time instead of last write time in long listing.",
+    newCommand(@["time-last-access", "E"], "Display time of last access instead of last write time in long listing.",
         proc(_: string) = longListingTime = lastAccess
     ),
     newCommand(@["human-readable", "r"], "Display file sizes in human readable format.",
