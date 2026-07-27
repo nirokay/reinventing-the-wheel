@@ -12,8 +12,7 @@ function installFile() {
     NAME=$(/usr/bin/basename "$PATH")
     NEW_NAME="$EXEC_PREFIX$NAME"
 
-    echo "Installing '$NAME' as '$NEW_NAME' to '$INSTALL_DIR'..."
-    /usr/bin/cp "$PATH" "$INSTALL_DIR/$NEW_NAME"
+    /usr/bin/cp "$PATH" "$INSTALL_DIR/$NEW_NAME" && echo "Installed '$NAME' as '$NEW_NAME' to '$INSTALL_DIR'."
 }
 
 for FILE in ./bin/*; do
