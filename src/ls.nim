@@ -4,7 +4,7 @@ import lib/all
 const
     PROGRAM = "ls"
     DESCRIPTION = "List files and directories."
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
 let cmd: CommandLine = parseCommandLine()
 
@@ -121,7 +121,7 @@ if longListing or printFileUrls:
 let requestedDirs: seq[string] = cmd.arguments
 var validDirs: seq[string]
 for dir in requestedDirs:
-    let directory: string = dir.replace("~", getHomeDir())
+    let directory: string = dir.expandTilde()
     if dirExists(dir): validDirs.add directory
     else: warningError("Cannot find directory with name '" & directory & "'.")
 
@@ -402,7 +402,7 @@ proc listDirectory(dir: string, multiple: bool = false) =
 
     if sortBy != byDefault: entries = entries.getSorted()
 
-    echo lines.join("\n")
+    if lines.len() != 0: echo lines.join("\n")
     entries.printEntries()
 
 if requestedDirs.len() == 0: listDirectory(".")
