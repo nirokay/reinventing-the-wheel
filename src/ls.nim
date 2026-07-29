@@ -1,4 +1,4 @@
-import std/[strutils, strformat, os, algorithm, options, terminal, math, times]
+import std/[strutils, strformat, os, algorithm, options, terminal, math, times, symlinks, paths]
 import lib/all
 
 const
@@ -11,7 +11,7 @@ let cmd: CommandLine = parseCommandLine()
 type
     FsItem = object
         kind*: PathComponent
-        fullPath*, path*: string
+        absolute*, relative*, name*: string
         info*: Option[FileInfo]
     Sorting = enum
         byDefault, byAlphabet, bySize, byDate
@@ -125,11 +125,26 @@ for dir in requestedDirs:
     if dirExists(dir): validDirs.add directory
     else: warningError("Cannot find directory with name '" & directory & "'.")
 
+proc getFsItem(path: string): FsItem =
+    result = FsItem(
+        name: path.splitPath().tail,
+        relative: path,
+        absolute: path.absolutePath()
+    )
+    try:
+        result.info = some path.getFileInfo()
+        result.kind = result.info.get().kind
+    except OSError:
+        discard
+proc getFsItem(path: string, kind: PathComponent): FsItem =
+    result = path.getFsItem()
+    result.kind = kind
+
 proc getFileDisplay(file: FsItem): string =
     result =
-        if printFileUrls: "file://" & file.fullPath
-        elif printAbsolutePath: file.fullPath
-        else: file.path
+        if printFileUrls: "file://" & file.absolute
+        elif printAbsolutePath: file.absolute
+        else: file.name
 
     # Replace characters:
     for repl in @[
@@ -233,7 +248,7 @@ proc getLongListingDetails(item: FsItem): seq[string] =
     let permissions: set[FilePermission] = (
         var r: set[FilePermission] = {}
         try:
-            r = item.fullPath.getFilePermissions()
+            r = item.absolute.getFilePermissions()
         except CatchableError:
             discard
         r
@@ -294,19 +309,30 @@ proc prettyLongListingDetails(entries: seq[seq[string]]): seq[seq[string]] =
         result[i] = r
 
 
-proc printEntry(item: FsItem, colLength: int, details: seq[string]) =
+proc printEntry(item: FsItem, colLength: int, details: seq[string], full: bool = false) =
     let
-        file: string = item.getFileDisplay()
+        file: string = (
+            if printFileUrls: item.getFileDisplay()
+            elif full: item.relative
+            else: item.getFileDisplay()
+        )
         color: ForegroundColor = block:
-            if item.info.isNone():
-                fgRed
-            else:
-                case item.info.get().kind:
-                    of pcFile: fgDefault
-                    of pcLinkToFile, pcLinkToDir: fgCyan
-                    of pcDir: fgBlue
+            var r: ForeGroundColor = fgRed
+            r = case item.kind:
+                of pcFile: fgDefault
+                of pcLinkToFile, pcLinkToDir: fgCyan
+                of pcDir: fgBlue
+
+            # Executable files:
+            if item.info.isSome():
+                let info: FileInfo = item.info.get()
+                case item.kind:
+                of pcFile:
+                    if fpUserExec in info.permissions: r = fgGreen
+                else: discard
+            r
         style: Style = block:
-            var r: Style = styleDim
+            var r: Style
             if item.info.isSome():
                 let info: FileInfo = item.info.get()
                 if info.kind in [pcDir, pcLinkToDir]: r = styleBright
@@ -314,7 +340,18 @@ proc printEntry(item: FsItem, colLength: int, details: seq[string]) =
 
     if details.len() != 0: stdout.write details.join(" ") & " "
     stdout.styledWrite style, color, file, fgDefault
-    stdout.write repeat(" ", max(0, colLength - file.len()))
+
+    block tail:
+        # Expand Symlinks in long listing:
+        if longListing:
+            if not symlinkExists(Path item.absolute): break tail
+            stdout.write " -> "
+            let
+                path: Path = expandSymlink(Path item.absolute)
+                target: FsItem = getFsItem(string path)
+            printEntry(target, 20, @[], full = true)
+        else:
+            stdout.write repeat(" ", max(0, colLength - file.len()))
 proc printEntries(entries: seq[FsItem]) =
     let
         data = if columns == 0: entries.putInMinimumCols() else: entries.putInColumnsOf(columns)
@@ -341,8 +378,8 @@ proc printEntries(entries: seq[FsItem]) =
 proc getSorted(entries: seq[FsItem]): seq[FsItem] =
     proc a(x, y: FsItem): int =
         let
-            xp: string = if ignoreCase: x.path.toLower() else: x.path
-            yp: string = if ignoreCase: y.path.toLower() else: y.path
+            xp: string = if ignoreCase: x.name.toLower() else: x.name
+            yp: string = if ignoreCase: y.name.toLower() else: y.name
         if not sortingReversed: cmp(xp, yp)
         else: cmp(yp, xp)
     proc s(x, y: FsItem): int =
@@ -387,18 +424,9 @@ proc listDirectory(dir: string, multiple: bool = false) =
 
     if multiple: lines.add dir & ":"
     for kind, p in walkDir(dir):
-        let path = p.splitPath().tail
-        if not listHiddenFiles and path.startsWith("."): continue
-        var item = FsItem(
-            kind: kind,
-            path: path.splitPath().tail,
-            fullPath: p.absolutePath()
-        )
-        try:
-            item.info = some p.getFileInfo()
-        except OSError:
-            discard
-        entries.add item
+        let name: string = p.splitPath().tail
+        if not listHiddenFiles and name.startsWith("."): continue
+        entries.add p.getFsItem(kind)
 
     if sortBy != byDefault: entries = entries.getSorted()
 
