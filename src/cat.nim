@@ -4,7 +4,7 @@ import lib/all
 const
     PROGRAM = "cat"
     DESCRIPTION = "Concatenate files and print to stdout."
-    VERSION = "1.0.0"
+    VERSION = "1.0.1"
 
 let cmd: CommandLine = parseCommandLine()
 
@@ -20,12 +20,12 @@ list[] = @[
     newCommand(@["line-numbers", "l"], "Add line numbers infront of each line.",
         proc(_: string) = lineNumbers = true
     ),
-    newCommand(@["head"], "Only print the first X lines.",
+    newCommand(@["head", "H"], "Only print the first X lines.",
         proc(_: string) =
             if headTail == opNone: headTail = opHead
             else: panicUserError("You have to select either head or tail.")
     ),
-    newCommand(@["tail"], "Only print the last X lines.",
+    newCommand(@["tail", "T"], "Only print the last X lines.",
         proc(_: string) =
             if headTail == opNone: headTail = opTail
             else: panicUserError("You have to select either head or tail.")

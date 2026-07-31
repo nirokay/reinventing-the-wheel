@@ -6,7 +6,7 @@ List files and directories.
 
 By default the program will try to fit the terminal width with a fitting amount of columns, with a
 maximum of 16.
-If you want to force a specific amount of columns use the `-c` flag: `ls -c=4`.
+If you want to force a specific amount of **columns** use the `-c` flag: `ls -c=4`.
 
 | Sorting      | Image                               |
 |--------------|-------------------------------------|
