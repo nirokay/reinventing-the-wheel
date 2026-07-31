@@ -2,6 +2,13 @@
 
 Writes to stdout.
 
+## Usage
+
+This program provides basic flags for removing trailing new line `-n`, enabling character escape
+sequences `-e` and indenting the entire output `-i`.
+
+![img](images/pwd.webp)
+
 ## Help
 
 ```

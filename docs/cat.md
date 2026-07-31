@@ -2,6 +2,11 @@
 
 Concatenate files and print to stdout.
 
+## Usage 
+|                               |                                |
+|-------------------------------|--------------------------------|
+| ![img](images/cat/first.webp) | ![img](images/cat/second.webp) |
+
 ## Help
 
 ```

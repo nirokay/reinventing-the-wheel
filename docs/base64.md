@@ -2,6 +2,15 @@
 
 Base64 encoder/decoder.
 
+## Usage
+
+Encoding `-e` or decoding `-d` must be specified.
+
+By default the program will read from stdin, to read from a file provide the `-f` flag, or pass
+the payload directly in with the `-p` flag.
+
+![img](images/base64.webp)
+
 ## Help
 
 ```

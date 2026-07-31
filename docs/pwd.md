@@ -2,6 +2,13 @@
 
 Prints the current working directory.
 
+## Usage
+
+You can use the `-u` flag to print a clickable path link. Clicking it should open your default
+file browser.
+
+![img](images/pwd.webp)
+
 ## Help
 
 ```

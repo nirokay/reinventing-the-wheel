@@ -4,7 +4,11 @@ This is a monorepo of programs that already exist, but remade just for fun.
 
 ## Compiling
 
-`nimble build` or `nimble build -d:release` will build all executables into `./bin/`.
+* `nimble build` `nimble build -d:release` -> binaries will be put into the `./bin/` subdirectory.
+* `nimble install https://github.com/nirokay/reinventing-the-wheel`
+
+The `install.sh` script appends a prefix to the binaries (`ls` -> `kls`), because of the default,
+actually better, programs and moves the built binaries into path (`~/.local/bin`).
 
 ## Docs
 
