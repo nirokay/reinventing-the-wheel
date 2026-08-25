@@ -112,7 +112,7 @@ list[] = @[
     )
 ]
 list.insertDefaultCommands()
-list.execAllCommands()
+list.execAllCommands(PROGRAM)
 
 if longListing or printFileUrls:
     columns = 1

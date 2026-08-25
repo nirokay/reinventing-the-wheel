@@ -43,7 +43,7 @@ list[] = @[
     )
 ]
 list.insertDefaultCommands()
-list.execAllCommands()
+list.execAllCommands(PROGRAM)
 
 proc performOperation(payload: string) =
     var result: string

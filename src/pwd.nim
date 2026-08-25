@@ -16,7 +16,7 @@ list[] = @[
 ]
 
 list.insertDefaultCommands()
-list.execAllCommands()
+list.execAllCommands(PROGRAM)
 
 try:
     let workingDir: string = (if printFileUrls: "file://" else: "") & getCurrentDir()

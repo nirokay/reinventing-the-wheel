@@ -44,7 +44,7 @@ list[] = @[
     ))
 ]
 list.insertDefaultCommands()
-list.execAllCommands()
+list.execAllCommands(PROGRAM)
 
 let output: string = block:
     var r: string = cmd.arguments.join(" ")

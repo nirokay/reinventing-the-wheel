@@ -44,7 +44,7 @@ list[] = @[
     )
 ]
 list.insertDefaultCommands()
-list.execAllCommands()
+list.execAllCommands(PROGRAM)
 
 
 let rawFiles: seq[string] = cmd.arguments

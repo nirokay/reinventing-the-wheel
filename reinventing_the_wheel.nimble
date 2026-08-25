@@ -11,7 +11,8 @@ bin           = @[
                     "cat",
                     "base64",
                     "ls",
-                    "pwd"
+                    "pwd",
+                    "true"
                 ]
 
 task release, "Build release versions.":

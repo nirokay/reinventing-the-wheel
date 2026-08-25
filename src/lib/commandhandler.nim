@@ -12,7 +12,7 @@ proc verifyUniqueness(list: ref seq[Command]) =
             commands.add flag
 
 
-proc execAllCommands*(list: ref seq[Command]) =
+proc execAllCommands*(list: ref seq[Command], PROGRAM: string) =
     ## Goes through all commands and executes `exec`
 
     # Verify every flag is unique, only in non-release builds:
